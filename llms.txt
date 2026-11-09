@@ -1,0 +1,27 @@
+# Catamenia
+
+> Free, private period tracker web app (PWA). Records periods (pain level, flow, notes) and forecasts the next periods with an 80 % uncertainty range, warns when a period is overdue and creates a PDF report for the doctor. All data stays on the device: no server, no account, no cookies, no ads, no tracking (only an optional one-time install counter with explicit consent). Languages: German, English, Polish, Turkish, Ukrainian. Not a medical device, not for contraception.
+
+App: https://oxi75.github.io/catamenia/
+Author: Oxi75 · License: PolyForm Strict 1.0.0 (noncommercial use; source code not public)
+
+## Documentation
+
+- [README – features, forecast method, privacy, install, technology](https://github.com/Oxi75/catamenia#readme): full description of what the app does and how it works
+- [Sample PDF report (English)](https://oxi75.github.io/catamenia/sample-report-en.pdf): doctor's report created from fictitious data
+- [Sample PDF report (German)](https://oxi75.github.io/catamenia/sample-report-de.pdf)
+- [Screenshots](https://github.com/Oxi75/catamenia/tree/main/screenshots): phone screenshots with demo data
+- [Third-party licenses](https://oxi75.github.io/catamenia/licenses.txt)
+
+## Key facts
+
+- Platform: web app, installable on iPhone (Safari → Add to Home Screen), Android and desktop; works offline.
+- Recording: per day period with pain (none/light/medium/strong), optional flow (light/normal/heavy), "period over", note; further complaints (e.g. PMS, after the DRSP symptom groups) with overall severity; discharge (clear/milky, kept out of the PMS evaluation); retroactive entries.
+- Forecast: robust weighted statistics of own cycles (recent cycles weigh more, outliers damped via median/MAD), blended with prior values while data is scarce; k-th period spread √(k·σ² + (k·se)²); 80 % ranges; overdue warning; per-day probability shading in the calendar.
+- Doctor's report: PDF on the device, 3/6/12/all cycles, report language independent of app language, key figures, pain/flow chart per cycle, table of all entries; share (e.g. Mail) or save.
+- Backup: JSON export (optionally password-encrypted), reminder after an adjustable interval (default 30 days, 0 = off); smart import that merges compatible data and warns about contradictions (same-day conflicts, implausibly short cycles, shifted periods, different cycle patterns).
+- Privacy: data only in browser storage (IndexedDB); leaves the device only when the user exports or shares.
+
+## Feedback
+
+- [Issues on GitHub](https://github.com/Oxi75/catamenia/issues/new) (public – no personal health data)

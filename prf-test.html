@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="PRF-Test" />
+<link rel="manifest" href="prf-test.webmanifest" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<title>Catamenia PRF-Test</title>
+<!--
+  Feasibility test (step C1): can a passkey with the WebAuthn PRF extension supply a stable secret
+  on this device – also in home-screen mode, also with the device passcode instead of Face ID?
+  Standalone page, no connection to the app's data. Nothing is sent anywhere: WebAuthn without a
+  server, all checks happen on the device. Only a fingerprint (SHA-256) of the secret is shown.
+-->
+<style>
+  :root { --bg: #fff7f8; --card: #fff; --text: #2a1a1f; --muted: #7a6469; --line: #f0dde2; --accent: #d6204f; --ok: #2e7d32; --bad: #c0262d; color-scheme: light; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #17110f; --card: #241b1d; --text: #f6e9ec; --muted: #b49ca2; --line: #3a2c30; --accent: #ff5c86; --ok: #7bc47f; --bad: #ff6b6b; color-scheme: dark; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 32px); display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 1.3rem; margin: 0; }
+  p { margin: 0; }
+  .hint { color: var(--muted); font-size: 0.9rem; }
+  .card { background: var(--card); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card h2 { font-size: 1rem; margin: 0; }
+  button { font: inherit; font-weight: 600; min-height: 48px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--text); cursor: pointer; }
+  button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+  button:disabled { opacity: 0.5; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.8rem; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px; min-height: 120px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .bad { color: var(--bad); font-weight: 600; }
+  ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔑 Catamenia – Passkey-PRF-Test</h1>
+  <p class="hint">Prüft, ob dieses Gerät mit Face ID / Fingerabdruck oder dem Gerätecode ein gleichbleibendes Geheimnis liefern kann, mit dem die App ihre Daten später verschlüsseln würde. Es werden keine Daten gesendet und keine echten Catamenia-Daten berührt.</p>
+
+  <section class="card">
+    <h2>So testen</h2>
+    <ol>
+      <li>Zuerst hier im Browser-Tab Schritte 1–4 durchgehen.</li>
+      <li>Dann die Seite zum Home-Bildschirm hinzufügen (iPhone: Teilen → „Zum Home-Bildschirm“; Android: Menü → „App installieren“ / „Zum Startbildschirm“), von dort öffnen und Schritte 1, 3 und 4 wiederholen.</li>
+      <li>Schritt 3 einmal mit Face ID / Fingerabdruck und einmal mit Gerätecode (Face ID abbrechen bzw. „Code eingeben“ wählen) – der Fingerabdruck muss gleich bleiben.</li>
+      <li>Am Ende „Protokoll kopieren“ und das Protokoll weitergeben.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2>1. Umgebung</h2>
+    <button id="env">Umgebung prüfen</button>
+  </section>
+  <section class="card">
+    <h2>2. Passkey anlegen (einmalig)</h2>
+    <button id="create" class="primary">Passkey anlegen</button>
+    <p class="hint" id="cred-state"></p>
+  </section>
+  <section class="card">
+    <h2>3. Geheimnis abfragen</h2>
+    <button id="get" class="primary">Mit Face ID / Fingerabdruck / Code abfragen</button>
+  </section>
+  <section class="card">
+    <h2>4. Ver- und Entschlüsseln</h2>
+    <button id="enc">Testtext verschlüsseln und speichern</button>
+    <button id="dec">Gespeicherten Testtext entschlüsseln</button>
+    <p class="hint">Verschlüsseln, Seite neu laden (oder App schließen und neu öffnen), dann entschlüsseln.</p>
+  </section>
+  <section class="card">
+    <h2>Protokoll</h2>
+    <pre id="log"></pre>
+    <button id="copy">Protokoll kopieren</button>
+    <button id="forget">Test zurücksetzen</button>
+    <p class="hint">Zurücksetzen löscht nur die gespeicherte Passkey-ID und den Testtext auf diesem Gerät. Den Passkey selbst bitte nach dem Test löschen: iPhone → App „Passwörter“ → Eintrag „oxi75.github.io“; Android → Google Passwortmanager.</p>
+  </section>
+</main>
+<script>
+(() => {
+  'use strict';
+  const KEY_ID = 'prfTest.credId';
+  const KEY_CT = 'prfTest.cipher';
+  const SALT = new TextEncoder().encode('catamenia-prf-test-v1'); // fixed, so the secret can be compared
+  const $ = (id) => document.getElementById(id);
+  const logEl = $('log');
+
+  function log(text, cls) {
+    const line = document.createElement('div');
+    line.textContent = `${new Date().toLocaleTimeString()}  ${text}`;
+    if (cls) line.className = cls;
+    logEl.append(line);
+  }
+  const store = {
+    get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k, v) => { try { localStorage.setItem(k, v); } catch { log('localStorage nicht verfügbar', 'bad'); } },
+    del: (k) => { try { localStorage.removeItem(k); } catch { /* ignore */ } },
+  };
+  const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const unb64u = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const fingerprint = async (buf) => hex(await crypto.subtle.digest('SHA-256', buf)).slice(0, 16);
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const err = (e) => `${e && e.name ? e.name + ': ' : ''}${e && e.message ? e.message : e}`;
+
+  function showCred() {
+    const id = store.get(KEY_ID);
+    $('cred-state').textContent = id ? `Gespeicherte Passkey-ID: ${id.slice(0, 12)}…` : 'Noch kein Passkey angelegt.';
+  }
+
+  /** Flags of the authenticator data: UP (user present), UV (user verified) */
+  function flags(authData) {
+    const f = new Uint8Array(authData)[32];
+    return `UP=${f & 1 ? 1 : 0} UV=${f & 4 ? 1 : 0}`;
+  }
+
+  async function env() {
+    log(`User-Agent: ${navigator.userAgent}`);
+    log(`Home-Bildschirm-Modus (standalone): ${standalone() ? 'ja' : 'nein'}`);
+    log(`Sicherer Kontext (HTTPS): ${isSecureContext ? 'ja' : 'nein'}`, isSecureContext ? 'ok' : 'bad');
+    if (!window.PublicKeyCredential) return log('WebAuthn wird nicht unterstützt', 'bad');
+    try {
+      const uvpa = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      log(`Face ID / Fingerabdruck / Gerätecode verfügbar: ${uvpa ? 'ja' : 'nein'}`, uvpa ? 'ok' : 'bad');
+    } catch (e) { log(`isUserVerifyingPlatformAuthenticatorAvailable: ${err(e)}`, 'bad'); }
+    if (PublicKeyCredential.getClientCapabilities) {
+      try {
+        const caps = await PublicKeyCredential.getClientCapabilities();
+        const prf = caps['extension:prf'];
+        log(`Browser meldet PRF-Unterstützung: ${prf === undefined ? 'keine Angabe' : prf ? 'ja' : 'nein'}`, prf ? 'ok' : prf === false ? 'bad' : undefined);
+        log(`Fähigkeiten: ${JSON.stringify(caps)}`);
+      } catch (e) { log(`getClientCapabilities: ${err(e)}`); }
+    } else log('getClientCapabilities: nicht vorhanden (älterer Browser – kein Ausschluss)');
+  }
+
+  async function create() {
+    try {
+      const cred = await navigator.credentials.create({
+        publicKey: {
+          rp: { name: 'Catamenia PRF-Test', id: location.hostname },
+          user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'catamenia-prf-test', displayName: 'Catamenia PRF-Test' },
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+          authenticatorSelection: { authenticatorAttachment: 'platform', residentKey: 'preferred', userVerification: 'required' },
+          timeout: 120000,
+          extensions: { prf: { eval: { first: SALT } } },
+        },
+      });
+      store.set(KEY_ID, b64u(cred.rawId));
+      showCred();
+      const ext = cred.getClientExtensionResults();
+      log(`Passkey angelegt (${cred.authenticatorAttachment ?? 'Typ unbekannt'})`, 'ok');
+      log(`PRF beim Anlegen: enabled=${ext.prf ? ext.prf.enabled : 'keine Angabe'}${ext.prf && ext.prf.results ? ', Geheimnis schon geliefert' : ''}`, ext.prf && ext.prf.enabled ? 'ok' : 'bad');
+      if (ext.prf && ext.prf.results) log(`Fingerabdruck des Geheimnisses: ${await fingerprint(ext.prf.results.first)}`);
+    } catch (e) { log(`Anlegen fehlgeschlagen – ${err(e)}`, 'bad'); }
+  }
+
+  /** Asks the authenticator for the PRF secret; returns the raw bytes or null */
+  async function secret() {
+    const id = store.get(KEY_ID);
+    if (!id) { log('Erst in Schritt 2 einen Passkey anlegen', 'bad'); return null; }
+    try {
+      const a = await navigator.credentials.get({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rpId: location.hostname,
+          allowCredentials: [{ type: 'public-key', id: unb64u(id) }],
+          userVerification: 'required',
+          timeout: 120000,
+          extensions: { prf: { eval: { first: SALT } } },
+        },
+      });
+      const ext = a.getClientExtensionResults();
+      log(`Bestätigt (${flags(a.response.authenticatorData)})`, 'ok');
+      if (!ext.prf || !ext.prf.results) { log('Kein PRF-Geheimnis geliefert → Verschlüsselung über Passkey hier NICHT möglich', 'bad'); return null; }
+      return ext.prf.results.first;
+    } catch (e) { log(`Abfrage fehlgeschlagen – ${err(e)}`, 'bad'); return null; }
+  }
+
+  async function get() {
+    const s = await secret();
+    if (s) log(`PRF-Geheimnis erhalten. Fingerabdruck: ${await fingerprint(s)} (muss bei jeder Abfrage gleich sein)`, 'ok');
+  }
+
+  async function aesKey(s) {
+    const base = await crypto.subtle.importKey('raw', s, 'HKDF', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: new TextEncoder().encode('catamenia-prf-test data key') },
+      base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'],
+    );
+  }
+
+  async function enc() {
+    const s = await secret();
+    if (!s) return;
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const text = `Testtext vom ${new Date().toLocaleString()}`;
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(s), new TextEncoder().encode(text));
+    store.set(KEY_CT, JSON.stringify({ iv: b64u(iv), ct: b64u(ct) }));
+    log(`Verschlüsselt und gespeichert: „${text}“`, 'ok');
+  }
+
+  async function dec() {
+    const raw = store.get(KEY_CT);
+    if (!raw) return log('Noch kein verschlüsselter Testtext gespeichert', 'bad');
+    const s = await secret();
+    if (!s) return;
+    try {
+      const { iv, ct } = JSON.parse(raw);
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64u(iv) }, await aesKey(s), unb64u(ct));
+      log(`Entschlüsselt: „${new TextDecoder().decode(plain)}“ → funktioniert`, 'ok');
+    } catch (e) { log(`Entschlüsseln fehlgeschlagen – ${err(e)}`, 'bad'); }
+  }
+
+  async function copy() {
+    const text = [...logEl.children].map((l) => l.textContent).join('\n');
+    try { await navigator.clipboard.writeText(text); log('Protokoll kopiert', 'ok'); }
+    catch {
+      const r = document.createRange(); r.selectNodeContents(logEl);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      log('Kopieren nicht erlaubt – Text ist markiert, bitte manuell kopieren');
+    }
+  }
+
+  function forget() {
+    store.del(KEY_ID);
+    store.del(KEY_CT);
+    showCred();
+    log('Test zurückgesetzt (Passkey selbst bitte in der Passwörter-App löschen)');
+  }
+
+  const bind = (id, fn) => {
+    const btn = $(id);
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try { await fn(); } catch (e) { log(`Fehler – ${err(e)}`, 'bad'); } finally { btn.disabled = false; }
+    });
+  };
+  bind('env', env); bind('create', create); bind('get', get); bind('enc', enc); bind('dec', dec); bind('copy', copy); bind('forget', forget);
+  showCred();
+  log(`Seite geladen – ${standalone() ? 'Home-Bildschirm-Modus' : 'Browser-Tab'}`);
+})();
+</script>
+</body>
+</html>

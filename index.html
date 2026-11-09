@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#d6204f" />
+    <meta
+      name="description"
+      content="Catamenia – free, private period tracker web app: record pain, flow and notes, forecast the next periods with an 80 % range, overdue warning and PDF report for your doctor. All data stays on your device – no server, no account, no ads. German, English, Polish, Turkish, Ukrainian."
+    />
+    <!-- Preview when the link is shared (messengers, social media) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Catamenia – private period tracker" />
+    <meta
+      property="og:description"
+      content="Record your period, forecast the next ones with an honest uncertainty range and create a PDF report for your doctor. All data stays on your device."
+    />
+    <meta property="og:url" content="https://oxi75.github.io/catamenia/" />
+    <meta property="og:image" content="https://oxi75.github.io/catamenia/icons/icon-512.png" />
+    <!-- Machine-readable description for search engines and AI tools -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Catamenia",
+        "url": "https://oxi75.github.io/catamenia/",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "Any (web browser; installable on iOS, Android, desktop)",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": ["de", "en", "pl", "tr", "uk"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "author": { "@type": "Person", "name": "Oxi75" },
+        "license": "https://github.com/Oxi75/catamenia/blob/main/LICENSE",
+        "description": "Private period tracker PWA. Records periods (pain, flow, notes), forecasts the next periods with 80 % ranges, warns when overdue, shows per-day probabilities in a calendar and creates a PDF report for the doctor. Smart backup import. All data stays on the device: no server, no account, no cookies, no ads. Not a medical device, not for contraception.",
+        "featureList": [
+          "Period recording with pain level, flow and notes, also retroactive",
+          "Statistical forecast of the next 6 periods with 80 % uncertainty ranges",
+          "Overdue warning and app icon badge",
+          "Calendar with probability shading",
+          "PDF report for the doctor (chart and table), report language selectable",
+          "Recording of PMS complaints and discharge, PMS pattern and forecast",
+          "Backup export with reminder and smart import with conflict detection",
+          "Works offline, installable as an app",
+          "German, English, Polish, Turkish, Ukrainian"
+        ],
+        "sameAs": "https://github.com/Oxi75/catamenia"
+      }
+    </script>
+    <!-- iPhone: run as an app from the home screen without Safari toolbars -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Catamenia" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <title>Catamenia – private period tracker</title>
+    <script type="module" crossorigin src="/catamenia/assets/index-C1WypVqx.js"></script>
+    <link rel="stylesheet" crossorigin href="/catamenia/assets/index-8QCyUkVP.css">
+  <link rel="manifest" href="/catamenia/manifest.webmanifest"></head>
+  <body>
+    <main id="app">…</main>
+    <noscript>
+      <h1>Catamenia – private period tracker</h1>
+      <p>
+        Catamenia is a free web app to record your period (pain, flow, notes) and forecast the next
+        periods with an 80 % uncertainty range. It warns when a period is overdue, shows per-day
+        probabilities in a calendar and creates a PDF report for your doctor. All data stays on
+        your device – no server, no account, no ads. Languages: German, English, Polish, Turkish, Ukrainian.
+      </p>
+      <p>
+        Please enable JavaScript to use the app. Full description, screenshots and sample reports:
+        <a href="https://github.com/Oxi75/catamenia#readme">github.com/Oxi75/catamenia</a>
+      </p>
+    </noscript>
+    <dialog id="day-dialog"></dialog>
+    <dialog id="disclaimer-dialog"></dialog>
+  </body>
+</html>
